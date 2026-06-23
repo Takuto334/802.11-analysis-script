@@ -1,0 +1,10 @@
+.DS_Store
+.vscode/
+airtime_summary.csv
+*.pcap
+*.pcapng
+raw_packets.csv
+scatter_data.csv
+scatter_rate_vs_duration.png
+__pycache__/
+*.pyc
