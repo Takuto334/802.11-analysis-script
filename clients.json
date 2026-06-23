@@ -1,4 +1,8 @@
 {
-    "enter here 1st device mac address": "enter here 1st device hostname",
-    "enter here 2nd device mac address": "enter here 2nd device hostname"
+    "7c:f0:e5:b8:03:8f": "Oneplus 13R",
+    "4c:4f:ee:24:3f:ec": "Oneplus 8Pro",
+    "dc:ef:ca:4b:55:0c": "Galaxy S8",
+    "7c:95:f3:3a:99:70": "AP-default(BSSID)",
+    "2c:3f:38:71:33:90": "AP-legacy(BSSID)",
+    "e8:c8:29:9e:b1:a0": "iPerf Server"
 }

@@ -8,3 +8,4 @@ scatter_data.csv
 scatter_rate_vs_duration.png
 __pycache__/
 *.pyc
+clients.json
