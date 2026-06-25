@@ -45,6 +45,18 @@ CONTROL_SUBTYPES_RA_ONLY = {
     29,  # ACK                  — 0x001d
 }
 
+# 制御フレームのサブタイプ名マッピング (fc_type_subtype 10進値 → 表示名)
+CONTROL_SUBTYPE_NAMES = {
+    24: "BAR",          # Block Ack Request — 0x0018
+    25: "BA",           # Block Ack         — 0x0019
+    26: "PS-Poll",      # PS-Poll           — 0x001a
+    27: "RTS",          # Request To Send   — 0x001b
+    28: "CTS",          # Clear To Send     — 0x001c
+    29: "ACK",          # Acknowledgement   — 0x001d
+    30: "CF-End",       # CF-End            — 0x001e
+    31: "CF-End+ACK",   # CF-End + CF-Ack   — 0x001f
+}
+
 # tshark で抽出するフィールド定義: (tsharkフィールド名, DataFrame列名)
 TSHARK_FIELDS = [
     ("frame.time_epoch",      "timestamp_epoch"),
@@ -285,7 +297,7 @@ def extract_packets(pcap_file: str) -> pd.DataFrame:
     df["airtime_owner_host"] = df["airtime_owner_mac"].apply(resolve_host)
 
     # 不要な中間カラムを削除
-    df.drop(columns=["timestamp_epoch", "ta", "sa", "ra", "da", "frame_subtype_int"],
+    df.drop(columns=["timestamp_epoch", "ta", "sa", "ra", "da"],
             inplace=True)
 
     print(f"[INFO] 完了: {len(df)} パケット抽出")
@@ -327,8 +339,13 @@ def compute_airtime_summary(df: pd.DataFrame, capture_duration_sec: float) -> tu
         byte_sum = group["frame_length"].sum()
         pkt_count = len(group)
 
-        # ACK/CTS 由来のパケット数（参考情報）
-        ack_cts_count = group["src_mac"].isna().sum()
+        # 制御フレームのサブタイプ別カウント
+        ctrl_frames = group[group["frame_type"] == "1"]
+        ctrl_counts = {}
+        for subtype_val, subtype_name in CONTROL_SUBTYPE_NAMES.items():
+            count = int((ctrl_frames["frame_subtype_int"] == subtype_val).sum())
+            if count > 0:
+                ctrl_counts[f"ctrl_{subtype_name}"] = count
 
         # 絶対占有率（分母 = キャプチャ実時間）
         abs_occupancy_pct = (dur_sum / capture_duration_us * 100) if capture_duration_us > 0 else 0.0
@@ -342,7 +359,7 @@ def compute_airtime_summary(df: pd.DataFrame, capture_duration_sec: float) -> tu
         # 平均データレート
         avg_rate = group["data_rate_mbps"].dropna().mean()
 
-        summary_rows.append({
+        row = {
             "airtime_owner_mac": mac,
             "host_name": resolve_host(mac),
             "total_duration_us": dur_sum,
@@ -350,11 +367,12 @@ def compute_airtime_summary(df: pd.DataFrame, capture_duration_sec: float) -> tu
             "airtime_relative_pct": round(rel_occupancy_pct, 4),
             "total_bytes": byte_sum,
             "packet_count": pkt_count,
-            "ack_cts_count": ack_cts_count,
             "throughput_bps": round(throughput_bps, 2),
             "throughput_mbps": round(throughput_bps / 1e6, 4),
             "avg_data_rate_mbps": round(avg_rate, 2) if pd.notna(avg_rate) else None,
-        })
+        }
+        row.update(ctrl_counts)
+        summary_rows.append(row)
 
     summary_df = pd.DataFrame(summary_rows)
     if not summary_df.empty:
@@ -494,14 +512,19 @@ def main():
         print("  端末別 Airtime 占有率サマリー（絶対値: 分母=キャプチャ実時間）")
         print("=" * 80)
         for _, row in summary_df.head(20).iterrows():
-            ack_info = f"  (ACK/CTS: {int(row['ack_cts_count'])})" if row['ack_cts_count'] > 0 else ""
+            ctrl_parts = []
+            for subtype_name in CONTROL_SUBTYPE_NAMES.values():
+                col = f"ctrl_{subtype_name}"
+                if col in row and pd.notna(row[col]) and int(row[col]) > 0:
+                    ctrl_parts.append(f"{subtype_name}:{int(row[col])}")
+            ctrl_info = f"  ({', '.join(ctrl_parts)})" if ctrl_parts else ""
             print(
                 f"  {row['host_name']:<20s}  "
                 f"Airtime: {row['airtime_occupancy_pct']:>7.2f}%  "
                 f"(相対: {row['airtime_relative_pct']:>6.2f}%)  "
                 f"Duration: {row['total_duration_us']:>10.0f} µs  "
                 f"Tput: {row['throughput_mbps']:>8.4f} Mbps"
-                f"{ack_info}"
+                f"{ctrl_info}"
             )
         print("-" * 80)
         print(
