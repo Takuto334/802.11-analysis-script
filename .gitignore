@@ -10,3 +10,6 @@ __pycache__/
 *.pyc
 clients.json
 pcap/
+results/
+*.sh
+plot_airtime_bar.py

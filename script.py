@@ -23,6 +23,7 @@ import matplotlib
 matplotlib.use("Agg")  
 import matplotlib.pyplot as plt
 
+
 # ============================================================
 # MACアドレス → ホスト名 マッピング (clients.json から読み込み)
 # ============================================================
@@ -550,7 +551,7 @@ def main():
     # --- 散布図 PNG ---
     scatter_png_path = os.path.join(args.output_dir, "scatter_rate_vs_duration.png")
     plot_scatter(scatter_df, scatter_png_path)
-    
+
     print("[INFO] すべての処理が完了しました。")
 
 
